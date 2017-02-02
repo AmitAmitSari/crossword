@@ -136,6 +136,7 @@
     // Constants
     var max_side_length = 11;
     var word_count = 50;
+    var given_words = 2;
     var dict_size = data.length;
     var lang = generate_language();
 
@@ -152,6 +153,24 @@
         var new_html = "";
 
         true_grid = create_crossword();
+        visible_grid = new_grid(max_side_length, " ");
+
+        // Fill in two words.
+        for (let count = 0; count < given_words; count++){
+            let word = choice(true_grid.word_list);
+            console.log(word);
+
+            let y = word[1];
+            let is_across = word[2];
+            let length = word[3];
+
+            let x = max_side_length - 1 - (word[0] + (is_across * (length - 1)));
+            console.log(x);
+            for (let index = 0; index < length; index++, x += is_across, y += 1 - is_across){
+                console.log(x, y);
+                visible_grid[x][y] = true_grid[x][y]
+            }
+        }
 
         for (var row = 0; row < max_side_length; row++){
             new_html += "<tr>";
@@ -243,6 +262,7 @@
         // Choose random words for the puzzle.
         var word_list = [];
         var word = [];
+        var final_word_list_positions = [];
 
         for (i = 0; i < word_count; i++) {
             word_list.push(next_random_word(max_side_length, 0));
@@ -259,7 +279,7 @@
         var x = Math.floor(Math.random() * (max_side_length - word.length * is_across));
         var y = Math.floor(Math.random() * (max_side_length - word.length * (1 - is_across)));
 
-        place_word(x, y, is_across, word, grid);
+        final_word_list_positions.push(place_word(x, y, is_across, word, grid));
 
         word = word_list.pop();
 
@@ -309,7 +329,7 @@
 
             if (best_score > -1) {
                 counting_unshifted = 0;
-                place_word(best_location[0], best_location[1], best_location[2], word, grid);
+                final_word_list_positions.push(place_word(best_location[0], best_location[1], best_location[2], word, grid));
 
             } else {
                 word_list.unshift(word);
@@ -348,6 +368,8 @@
             }
         }
 
+        grid.word_list = final_word_list_positions;
+
         return grid;
     };
 
@@ -356,12 +378,16 @@
         // is_across is 1 for true and 0 for false.
 
         // console.log("Placed word " + fromUnicode(word) + " At " + x + " " + y + " " + is_across);
+        let _x = x;
+        let _y = y;
 
         for (var i = 0; i < word.length; i++){
             grid[x][y] = word[i];
             x += is_across;
             y += 1 - is_across;
         }
+
+        return [_x, _y, is_across, word.length]
     };
 
     var score_locations = function (x, y, is_across, word, grid) {
