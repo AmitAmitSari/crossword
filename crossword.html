@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<style>
+    div.number{
+        position: relative;
+        bottom: 0;
+        right: 0;
+        text-align: right;
+        font-size: smaller;
+    }
+    td.square{
+        width: 40px;
+        height: 40px;
+    }
+    table.sentence{
+        border-collapse: collapse;
+    }
+    td.border{
+        border: solid thin;
+    }
+</style>
+<script type='text/javascript' src="dictionary.js" title="Word List"></script>
+<script type="text/javascript" src="sentences.js" title="Sentence List"></script>
+<script title="Helper Functions">
+
+    function arraysEqual(a, b) {
+        if (a === b) return true;
+        if (a == null || b == null) return false;
+        if (a.length != b.length) return false;
+
+        for (var i = 0; i < a.length; ++i) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
+    // Dictionary stuff
+    var huge_dict = data.slice();
+
+    function reset_dictionary(){
+        huge_dict = data.slice();
+    }
+
+    function next_random_word(max_size, min_size){
+        var sublist = huge_dict.filter(function(x){
+            return max_size >= x.length && min_size <= x.length
+        });
+
+        var word = choice(sublist);
+        huge_dict.splice(huge_dict.indexOf(word), 1);
+
+        return word;
+    }
+
+    // All random lists
+    function choice(list){
+        return list[Math.floor(Math.random() * list.length)]
+    }
+
+    // The letter - number relationship
+    function generate_language(){
+        // creates a size 22 array containing one of each letter in the hebrew alphabet.
+
+        var letter_array = "אבגדהוזחטיכלמנסעפצקרשת".split("");
+        var result = [];
+
+        while (letter_array.length > 0){
+            var lett = choice(letter_array);
+            letter_array.splice(letter_array.indexOf(lett), 1);
+
+            result.push(lett);
+        }
+        return result
+    }
+
+    function letter_to_number(lang, lett){
+        var index = lang.indexOf(lett);
+        if (index != -1) {
+            return index + 1;
+        }
+        else {
+            var ends = ["ם", "ף", "ץ", "ן", "ך"];
+            var reg = ["מ", "פ", "צ", "נ", "כ"];
+
+            if (ends.indexOf(lett) != -1){
+                return letter_to_number(lang, reg[ends.indexOf(lett)]);
+            }
+        }
+        console.log("Invalid letter " + lett);
+        return lett
+    }
+
+    function number_to_letter(lang, num) {
+        if (num > lang.length || num < 1){
+            throw "Invalid number " + num;
+        }
+        return lang[num - 1];
+    }
+
+    // The letter - unicode relationship
+    function toUnicode(theString) {
+        var unicodeString = '';
+        for (var i=0; i < theString.length; i++) {
+            var theUnicode = theString.charCodeAt(i).toString(16).toUpperCase();
+            while (theUnicode.length < 4) {
+                theUnicode = '0' + theUnicode;
+            }
+            theUnicode = '\\u' + theUnicode;
+            unicodeString += theUnicode;
+        }
+        return unicodeString;
+    }
+
+    function fromUnicode(theString) {
+        // Input:  The output of toUnicode.
+        // Output: The input of toUnicode
+        return JSON.parse('"' + theString + '"')
+    }
+
+    function helper_one(event) {
+        if (event.which != 0 && event.charCode != 0) {
+            var char = String.fromCharCode(event.which);
+            set_letter(selected_square, char)
+        }
+    }
+
+    function new_grid(size, filling){
+        var result = new Array(size);
+        for (var i = 0; i < result.length; i++) {
+            result[i] = new Array(size).fill(filling);
+        }
+        return result;
+    }
+</script>
+<script title="Looks.">
+
+    // Constants
+    var max_side_length = 11;
+    var word_count = 50;
+    var dict_size = data.length;
+    var lang = generate_language();
+
+    // Constant References
+    var selected_square = undefined;
+
+    var true_grid = new_grid(max_side_length);
+    var visible_grid = new_grid(max_side_length, " ");
+
+    var new_puzzle = function () {
+        lang = generate_language();
+        reset_dictionary();
+
+        var new_html = "";
+
+        true_grid = create_crossword();
+
+        for (var row = 0; row < max_side_length; row++){
+            new_html += "<tr>";
+            for (var col = 0; col < max_side_length; col++){
+//                var textarea_html = "<input type='text' style = 'width: 100% height: 100%' onkeypress='this.value=\"\"' value=" + fromUnicode(visible_grid[row][col]) + "> </input>";
+
+                let textarea_html = "";
+                let little_number = "";
+                if (true_grid[col][row] != "") {
+                    textarea_html = "<div class='letter'>" + fromUnicode(visible_grid[col][row]) + "</div>";
+                    little_number = "<div class='number'>" + letter_to_number(lang, fromUnicode(true_grid[col][row])) + "</div>";
+                }
+                new_html += "<td align='center' class='square border' onclick='set_selected(this)'>" + textarea_html + little_number + "</td>";
+            }
+            new_html += "</tr>";
+        }
+
+
+        var new_sentence_html = "<table class='sentence'><tr>";
+        var sentence = choice(sentences);
+        sentence.reverse();
+
+        var count_row = 0;
+
+        for (let index = 0; index < sentence.length; index++) {
+            let letter = fromUnicode(sentence[index]);
+            let textarea = "";
+            let number = "";
+
+//            if (letter == " "){
+//                var length = sentence.slice(index).indexOf(" ");
+//                if (length == -1){
+//                    length = sentence.length - 1 - index
+//                }
+//
+//                if (count_row + length > max_side_length && count_row != 0){
+//                    new_sentence_html += "</tr><tr>";
+//                    count_row = 0;
+//                    continue;
+//                } else {
+//                    textarea = " ";
+//                }
+//            }
+            if (letter.charCodeAt(0) <= 1514 && letter.charCodeAt(0) >= 1488){
+                // Is hebrew
+                number = letter_to_number(lang, letter);
+            } else {
+                textarea = letter
+            }
+            let textarea_html = "<div class='letter'>" + textarea + "</div>";
+            var number_html = number ? "<div class='number'>" + number + "</div>" : "";
+            new_sentence_html += "<td class='square border' onclick='set_selected(this)'>" + textarea_html + number_html + "</td>";
+            count_row += 1
+        }
+        new_sentence_html += "</tr></table>";
+
+        document.getElementById("main_grid").innerHTML = new_html;
+        document.getElementById("sentence_area").innerHTML = new_sentence_html;
+    };
+
+    var set_selected = function(table_element){
+        if (selected_square) {
+            selected_square.setAttribute("bgcolor", "white");
+        }
+        table_element.setAttribute("bgcolor", "aqua");
+        selected_square = table_element
+    };
+
+    function set_letter(table_element, lett){
+//        document.getElementById("main_grid").textContent
+        let elem = table_element.getElementsByClassName("letter")[0];
+        if (table_element.getElementsByClassName("number")[0]) {
+            elem.innerHTML = lett
+        } else {
+            //table_element.innerHTML = lett
+        }
+    }
+
+</script>
+<script title="Crossword Generation">
+    var create_crossword = function(){
+        // This is very ugly code.
+        var grid = new Array(max_side_length);
+        for (var i = 0; i < grid.length; i++){
+            grid[i] = new Array(max_side_length);
+        }
+
+
+        // Choose random words for the puzzle.
+        var word_list = [];
+        var word = [];
+
+        for (i = 0; i < word_count; i++) {
+            word_list.push(next_random_word(max_side_length, 0));
+        }
+
+        // Sort them by length in ascending order, so that pop gives the longest word.
+        word_list.sort(function (a, b) {
+            return a.length - b.length;
+        });
+
+        // Place first word on the board in random location.
+        word = word_list.pop();
+        var is_across = Math.floor(Math.random() * 2);
+        var x = Math.floor(Math.random() * (max_side_length - word.length * is_across));
+        var y = Math.floor(Math.random() * (max_side_length - word.length * (1 - is_across)));
+
+        place_word(x, y, is_across, word, grid);
+
+        word = word_list.pop();
+
+        var global_count = 0;
+        var counting_unshifted = 0;
+        while (word != undefined){
+
+            global_count+= 1;
+            if (global_count > 1000){
+                break;
+            }
+
+            var best_location = [];
+            var best_score = -1;
+
+            // Loop on grid
+            for (i = 0; i < grid.length; i++){
+                for (var j = 0; j < grid[0].length; j++){
+
+                    // If a letter can overlap
+                    if (word.indexOf(grid[i][j]) != -1){
+
+                        // Loop on the word
+                        for (var z = 0; z < word.length; z++){
+
+                            // When the letter overlaps
+                            if (word[z] == grid[i][j]){
+
+                                // Test across
+                                var score = score_locations(i - z, j, 1, word, grid);
+                                if (score > best_score){
+                                    best_location = [i - z, j, 1];
+                                    best_score = score;
+                                }
+
+                                // Test Down
+                                score = score_locations(i, j - z, 0, word, grid);
+                                if (score > best_score){
+                                    best_location = [i, j - z, 0];
+                                    best_score = score;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (best_score > -1) {
+                counting_unshifted = 0;
+                place_word(best_location[0], best_location[1], best_location[2], word, grid);
+
+            } else {
+                word_list.unshift(word);
+                counting_unshifted += 1;
+                if (counting_unshifted == word_list.length){
+
+                    var new_words_count = word_list.length;
+                    word_list = [];
+
+                    for (i = 0; i < new_words_count; i++){
+                        word_list.push(next_random_word());
+                    }
+
+                    word_list.sort(function (a, b) {
+                        return a.length - b.length;
+                    });
+                }
+            }
+
+            word = word_list.pop();
+        }
+
+        for (let x = 0; x < grid.length; x++){
+            for (let y = 0; y < grid[0].length; y++){
+                if (grid[x][y] === undefined) {
+                    grid[x][y] = ""
+                }
+            }
+        }
+
+        for (let x = 0; x < grid.length / 2; x++){
+            for (let y = 0; y < grid[0].length; y++){
+                let temp = grid[x][y];
+                grid[x][y] = grid[grid.length - x - 1][y];
+                grid[grid.length - x - 1][y] = temp
+            }
+        }
+
+        return grid;
+    };
+
+    var place_word = function (x, y, is_across, word, grid) {
+        // Place the word on the grid. Overrides things already there.
+        // is_across is 1 for true and 0 for false.
+
+        // console.log("Placed word " + fromUnicode(word) + " At " + x + " " + y + " " + is_across);
+
+        for (var i = 0; i < word.length; i++){
+            grid[x][y] = word[i];
+            x += is_across;
+            y += 1 - is_across;
+        }
+    };
+
+    var score_locations = function (x, y, is_across, word, grid) {
+        // Looks at the location and gives is a score, Higher is better.
+        // -1 is invalid location.
+        // A location is invalid if:
+        //    Placing the word there will not add to the puzzle. (The word is entirely on existing words)
+        //    The word leaves the max room available.
+        //    The word clashes with another word.
+        // A location gets a higher score if:
+        //   It rests on more existing words.
+
+//        console.log("Trying: " + word.reduce(function (res, letter) {
+//                    return res + fromUnicode(letter);
+//                }, "") + " At " + x + " " + y + " " + is_across);
+
+        var score = 0;
+        var at_least_on_new_space = false;
+
+        for (var i = 0; i < word.length; i++, x += is_across, y += 1 - is_across) {
+            if (x > max_side_length - 1 || y > max_side_length - 1 || x < 0 || y < 0){
+                score = -1;
+                break;
+            }
+
+            var on_empty = grid[x][y] == undefined;
+            at_least_on_new_space = at_least_on_new_space || on_empty;
+
+
+            var f = function (a, b) {
+                // Returns false if the square a, b in empty or off the grid.
+
+                if (a < 0 || a >= grid.length || b < 0 || b >= grid[0].length){
+                    return false;
+                }
+                return grid[a][b] != undefined;
+            };
+
+
+            if (i == 0 && f(x - is_across, y - 1 + is_across)){
+                // Does not work right?
+                score = -1;
+                break;
+            }
+            if (on_empty && (f(x + 1 - is_across, y + is_across) || f(x - 1 + is_across, y - is_across))){
+                score = -1;
+                break;
+            }
+            if (i == word.length - 1 && f(x + is_across, y + 1 - is_across)){
+                // Does not work right?
+                score = -1;
+                break;
+            }
+
+
+
+            if (!on_empty && grid[x][y] != word[i]) {
+                // A different letter is already there.
+                score = -1;
+                break;
+            } else {
+                score += 2;
+            }
+
+        }
+
+        if (!at_least_on_new_space) {
+            score = -1;
+        }
+
+        return score;
+    }
+</script>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cool Crossword</title>
+</head>
+<body onkeypress="helper_one(event)">
+<div align="center">
+    <h1>Welcome to my ugly crossword thingy!!!</h1>
+    <table id="main_grid" class="sentence">
+    </table>
+    <br/>
+    <br/>
+    <p id="sentence_area"></p>
+    <button onclick="new_puzzle()" name="draw">New Puzzle</button>
+</div>
+</body>
+</html>
