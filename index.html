@@ -155,19 +155,19 @@
         true_grid = create_crossword();
         visible_grid = new_grid(max_side_length, " ");
 
+//        document.getElementById("word_count").innerHTML = "Word Count = " + true_grid.word_list.length;
         // Fill in two words.
+        let words = true_grid.word_list.slice();
         for (let count = 0; count < given_words; count++){
-            let word = choice(true_grid.word_list);
-            console.log(word);
+            let word = choice(words);
+            words.splice(words.indexOf(word), 1);
 
             let y = word[1];
             let is_across = word[2];
             let length = word[3];
 
             let x = max_side_length - 1 - (word[0] + (is_across * (length - 1)));
-            console.log(x);
             for (let index = 0; index < length; index++, x += is_across, y += 1 - is_across){
-                console.log(x, y);
                 visible_grid[x][y] = true_grid[x][y]
             }
         }
@@ -265,7 +265,7 @@
         var final_word_list_positions = [];
 
         for (i = 0; i < word_count; i++) {
-            word_list.push(next_random_word(max_side_length, 0));
+            word_list.push(next_random_word(max_side_length / 2, 0));
         }
 
         // Sort them by length in ascending order, so that pop gives the longest word.
@@ -406,48 +406,36 @@
 
         var score = 0;
         var at_least_on_new_space = false;
+        var f = function (a, b) {
+            // Returns false if the square a, b in empty or off the grid.
+            if (a < 0 || a >= grid.length || b < 0 || b >= grid[0].length){
+                return false;
+            }
+            return grid[a][b] != undefined;
+        };
+
+        if (f(x - is_across, y - 1 + is_across)){
+            // The square before the start of the word is full.
+            return -1;
+        } else if (f(x + (word.length * is_across), y + ((1 - is_across) * word.length))){
+            return -1;
+        }
 
         for (var i = 0; i < word.length; i++, x += is_across, y += 1 - is_across) {
             if (x > max_side_length - 1 || y > max_side_length - 1 || x < 0 || y < 0){
-                score = -1;
-                break;
+                return -1;
             }
 
             var on_empty = grid[x][y] == undefined;
             at_least_on_new_space = at_least_on_new_space || on_empty;
 
-
-            var f = function (a, b) {
-                // Returns false if the square a, b in empty or off the grid.
-
-                if (a < 0 || a >= grid.length || b < 0 || b >= grid[0].length){
-                    return false;
-                }
-                return grid[a][b] != undefined;
-            };
-
-
-            if (i == 0 && f(x - is_across, y - 1 + is_across)){
-                // Does not work right?
-                score = -1;
-                break;
-            }
             if (on_empty && (f(x + 1 - is_across, y + is_across) || f(x - 1 + is_across, y - is_across))){
-                score = -1;
-                break;
+                return -1;
             }
-            if (i == word.length - 1 && f(x + is_across, y + 1 - is_across)){
-                // Does not work right?
-                score = -1;
-                break;
-            }
-
-
 
             if (!on_empty && grid[x][y] != word[i]) {
                 // A different letter is already there.
-                score = -1;
-                break;
+                return -1;
             } else {
                 score += 2;
             }
@@ -455,7 +443,7 @@
         }
 
         if (!at_least_on_new_space) {
-            score = -1;
+            return -1;
         }
 
         return score;
